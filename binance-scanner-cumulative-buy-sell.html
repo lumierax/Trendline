@@ -1,0 +1,2494 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Binance Breakout + Order Book Scanner</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#070a0f;--card:#0d131c;--line:#243044;--txt:#eef4ff;--muted:#8fa0b8;
+  --good:#26d07c;--warn:#f5bf42;--accent:#58a6ff;--bad:#ff6575;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
+.wrap{max-width:1320px;margin:auto;padding:14px}
+h1{font-size:22px;margin:4px 0 7px}
+h2{font-size:16px;margin:0}
+.sub{color:var(--muted);font-size:13px;line-height:1.65}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+button{border:0;border-radius:10px;padding:10px 14px;font-weight:800;background:var(--accent);color:#03101e}
+button.secondary{background:#1b2636;color:var(--txt)}
+button.danger{background:#4b1b23;color:#ffe2e5}
+button:disabled{opacity:.45}
+.top{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px}
+.k{font-size:11px;color:var(--muted)}
+.v{font-size:17px;font-weight:900;margin-top:4px}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.workers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.worker{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;min-width:0}
+.title{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.wn{font-size:16px;font-weight:900}
+.state{font-size:11px;color:var(--muted);background:#172131;padding:4px 8px;border-radius:999px}
+select{width:100%;margin-top:8px;padding:10px;border-radius:9px;border:1px solid var(--line);background:#08101a;color:var(--txt);font-weight:800}
+.wbtns{display:flex;gap:6px;margin-top:8px}
+.wbtns button{flex:1;padding:8px 5px;font-size:11px}
+.progress{height:6px;background:#151d29;border-radius:999px;overflow:hidden;margin-top:8px}
+.progress>div{height:100%;width:0;background:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}
+.stat{border:1px solid var(--line);background:#09111b;border-radius:8px;padding:6px;min-width:0}
+.stat .v{font-size:12px;overflow-wrap:anywhere}
+.section{margin-top:15px}
+.sh{display:flex;justify-content:space-between;align-items:end;gap:8px;margin-bottom:7px}
+.badge{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:4px 8px;border-radius:999px}
+.tw{border:1px solid var(--line);border-radius:12px;overflow:auto;background:#090e15}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:#111a27;color:var(--muted);font-size:11px}
+td{font-size:13px}
+tr:last-child td{border-bottom:0}
+.symbol{direction:ltr;text-align:right;font-weight:900}
+.num{direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.tf{font-weight:800}
+.rising{border-color:rgba(38,208,124,.48)}
+.rising th{background:#0b2117}
+.final{border-color:rgba(88,166,255,.55)}
+.final th{background:#0b1a2a}
+.nomination{border-color:rgba(245,191,66,.55)}
+.nomination th{background:#241d0b}
+.follow{border-color:rgba(138,92,246,.55)}
+.follow th{background:#1b1230}
+.rank{font-weight:900;text-align:center}
+.miniBtn{padding:5px 8px;border-radius:7px;font-size:11px;background:#4b1b23;color:#ffe2e5}
+.empty{padding:16px;text-align:center;color:var(--muted);font-size:12px}
+.log{height:180px;overflow:auto;background:#05080d;border:1px solid var(--line);border-radius:11px;padding:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;direction:ltr;text-align:left;white-space:pre-wrap;margin-top:8px}
+.note{font-size:11px;color:var(--muted);line-height:1.7;margin-top:10px}
+@media(max-width:1000px){.workers{grid-template-columns:1fr}}
+
+.pageTabs{display:flex;gap:8px;margin:0 0 12px}
+.pageTabs button{background:#151f2d;color:var(--txt);border:1px solid var(--line)}
+.pageTabs button.active{background:var(--accent);color:#03101e;border-color:transparent}
+.appPage{display:none}
+.appPage.active{display:block}
+.workHero{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.workHero h1{margin:0}
+.heroActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.heroActions button{min-height:48px;font-size:14px}
+.workerControls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 16px}
+.workerControl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.workerControl .wn{margin-bottom:8px}
+.workerControl .wbtns{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.workerControl .wbtns button{font-size:12px}
+.detailsHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.detailsWorkers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.detailWorker{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px}
+.workTableWrap{margin-top:14px}
+.workTableWrap .tw{border-color:rgba(138,92,246,.65)}
+.workTableWrap th{background:#1b1230}
+.settingsGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:860px}
+.settingsGrid .full{grid-column:1/-1}
+.fieldLabel{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}
+.textInput{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#08101a;color:var(--txt);font-size:14px;direction:ltr;text-align:left}
+.sortableHead{cursor:pointer;user-select:none;transition:background .15s,color .15s}
+.sortableHead:hover{background:#211842}
+.sortableHead.activeSort{color:var(--warn)}
+.sortArrow{font-size:10px;margin-inline-start:4px;opacity:.85}
+.settingsActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.settingsStatus{margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0a111b;color:var(--muted);font-size:12px}
+.checkRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.checkRow input{width:18px;height:18px}
+@media(max-width:850px){
+  .heroActions{grid-template-columns:1fr}
+  .workerControls,.detailsWorkers{grid-template-columns:1fr}
+  .workHero,.detailsHeader{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="pageTabs">
+  <button id="workTab" class="active">صفحة العمل</button>
+  <button id="detailsTab">صفحة التفاصيل</button>
+  <button id="settingsTab">الإعدادات</button>
+</div>
+
+<!-- ===================== WORK PAGE ===================== -->
+<section id="workPage" class="appPage active">
+
+  <div class="workHero">
+    <div>
+      <h1>صفحة العمل</h1>
+      <div class="sub">تحكم سريع بالعمال ومتابعة العملات المرشحة فقط.</div>
+    </div>
+  </div>
+
+  <div class="heroActions">
+    <button id="startAll">تشغيل تلقائي للجميع</button>
+    <button id="stopAll" class="secondary" disabled>إيقاف تلقائي للجميع</button>
+    <button id="clearAllRecords" class="danger">مسح سجلات الجميع</button>
+  </div>
+
+  <div class="workerControls" id="workerControls"></div>
+
+  <div class="section workTableWrap">
+    <div class="sh">
+      <div>
+        <h2>متابعة ما بعد الترشيح</h2>
+        <div class="sub">
+          العملات التي وصلت إلى +0.1% نمو تدخل هنا وتبقى حتى تحذفها أنت. سعر الدخول هو إغلاق شمعة الاختراق، ووقف الخسارة هو أقرب قاع محلي قبلها على نفس الفريم.
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="badge" id="followBadge">0</span>
+        <button id="clearFollowTable" class="danger" style="padding:7px 10px">مسح الجدول بالكامل</button>
+      </div>
+    </div>
+
+    <div class="tw follow">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortableHead" data-follow-sort="symbol">العملة <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="tf">الفريم <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="entryPrice">سعر الدخول <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="stopLoss">وقف الخسارة <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="currentPrice">السعر الآن <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="highPrice">أعلى سعر <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="maxGain">أعلى صعود <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="drawdown">تراجع من القمة <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="growth">نمو حجم 24h <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="bidAdv">Bid/Ask <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="imbalance">Imbalance <span class="sortArrow"></span></th>
+            <th class="sortableHead" data-follow-sort="status">الحالة <span class="sortArrow"></span></th>
+            <th>تحكم</th>
+          </tr>
+        </thead>
+        <tbody id="followBody"></tbody>
+      </table>
+      <div class="empty" id="followEmpty">لا توجد عملات في متابعة ما بعد الترشيح.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DETAILS PAGE ===================== -->
+<section id="detailsPage" class="appPage">
+
+  <div class="detailsHeader">
+    <div>
+      <h1>تفاصيل الماسح</h1>
+      <div class="sub">
+        كل بيانات المراحل الداخلية، حالة العمال، دفتر الأوامر، حجم 24 ساعة، والمراقبة المكثفة.
+      </div>
+    </div>
+  </div>
+
+  <div class="top">
+    <div class="card"><div class="k">أزواج Spot/USDT</div><div class="v" id="pairs">—</div></div>
+    <div class="card"><div class="k">إعداد LuxAlgo</div><div class="v">24 / 1.4 / ATR</div></div>
+    <div class="card"><div class="k">اختراقات تحت المراقبة</div><div class="v" id="watchCount">0</div></div>
+    <div class="card"><div class="k">تفوق الشراء المنفذ</div><div class="v good" id="promotedCount">0</div></div>
+    <div class="card"><div class="k">ترشيح حجم 24h</div><div class="v" id="finalCount">0</div></div>
+    <div class="card"><div class="k">مرشحون +0.1%</div><div class="v warn" id="nominationCount">0</div></div>
+    <div class="card"><div class="k">متابعة بعد الترشيح</div><div class="v" id="followCount">0</div></div>
+  </div>
+
+  <div class="detailsWorkers" id="workerDetails"></div>
+
+  <div class="section">
+    <div class="sh">
+      <div>
+        <h2>1 — جميع الاختراقات</h2>
+        <div class="sub">كل الفريمات في جدول واحد، مع قراءة دفتر الأوامر الحالية.</div>
+      </div>
+      <span class="badge" id="stage1Badge">0</span>
+    </div>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th>العملة</th>
+            <th>الفريم</th>
+            <th>Bid مقابل Ask</th>
+            <th>Imbalance</th>
+            <th>ميل الدفتر</th>
+          </tr>
+        </thead>
+        <tbody id="stage1Body"></tbody>
+      </table>
+      <div class="empty" id="stage1Empty">لا توجد اختراقات حتى الآن.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh">
+      <div>
+        <h2 class="good">2 — إجمالي الشراء والبيع منذ الاختراق</h2>
+        <div class="sub">
+          مجموع الشراء والبيع المبادر المنفذ من إغلاق شمعة الاختراق إلى الآن.
+          تُسترجع الصفقات السابقة ثم يستمر الحساب الحي، حتى بعد انتهاء المسح والترشيح.
+          شرط الانتقال الوحيد بعد اكتمال البيانات: Buy USDT &gt; Sell USDT. التساوي لا يرشّح.
+          لا يُحذف صف سبق ترشيحه عند انقلاب الحصيلة. أرقام الصف تُحدّث باستمرار.
+        </div>
+      </div>
+      <span class="badge good" id="stage2Badge">0</span>
+    </div>
+    <div class="tw rising">
+      <table>
+        <thead>
+          <tr>
+            <th>العملة</th>
+            <th>الفريم</th>
+            <th>Buy USDT</th>
+            <th>Sell USDT</th>
+            <th>Executed Buy/Sell</th>
+            <th>Executed Imbalance</th>
+            <th>صافي التنفيذ</th>
+            <th>حالة البيانات</th>
+          </tr>
+        </thead>
+        <tbody id="stage2Body"></tbody>
+      </table>
+      <div class="empty" id="stage2Empty">لم يتفوق الشراء على البيع بعد اكتمال البيانات لأي إشارة جديدة.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh">
+      <div>
+        <h2>3 — ترشيح حجم 24 ساعة USDT</h2>
+        <div class="sub">
+          إذا كان حجم 24h أعلى من 5M يدخل مباشرة، وإذا كان 5M أو أقل ينتظر زيادة 200K USDT.
+        </div>
+      </div>
+      <span class="badge" id="stage3Badge">0</span>
+    </div>
+    <div class="tw final">
+      <table>
+        <thead>
+          <tr>
+            <th>العملة</th>
+            <th>الفريم</th>
+            <th>حجم 24h الآن</th>
+            <th>حجم البداية</th>
+            <th>الزيادة</th>
+            <th>سبب الترشيح</th>
+          </tr>
+        </thead>
+        <tbody id="stage3Body"></tbody>
+      </table>
+      <div class="empty" id="stage3Empty">لا توجد حالات مرشحة بعد.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sh">
+      <div>
+        <h2 class="warn">4 — المراقبة المكثفة والترشيحات</h2>
+        <div class="sub">
+          بين 0% و+0.1% تبقى تحت المراقبة، وعند +0.1% أو أكثر تصبح مرشحًا.
+          إذا أصبح النمو 0% أو سالبًا تُحذف من هذه المرحلة فقط.
+        </div>
+      </div>
+      <span class="badge warn" id="nominationBadge">0</span>
+    </div>
+    <div class="tw nomination">
+      <table>
+        <thead>
+          <tr>
+            <th>الترتيب</th>
+            <th>العملة</th>
+            <th>الفريم</th>
+            <th>حجم 24h الآن</th>
+            <th>الزيادة</th>
+            <th>نمو الحجم</th>
+            <th>الحالة</th>
+          </tr>
+        </thead>
+        <tbody id="nominationBody"></tbody>
+      </table>
+      <div class="empty" id="nominationEmpty">لا توجد عملات مؤهلة للمراقبة المكثفة الآن.</div>
+    </div>
+  </div>
+
+  <h3 style="margin:16px 0 0">تفاصيل العمال</h3>
+  <div class="sub">يمكن تشغيل عامل منفرد أو مسح سجلاته من هنا.</div>
+
+  <h3 style="margin:16px 0 0">السجل</h3>
+  <div class="log" id="log"></div>
+
+  <div class="note">
+    كل عامل يستخدم الفريم المختار له لحظة بدء المسح، ويقفل هذا الفريم طوال دورة المسح الحالية.
+    الماسح يعتمد على شمعة Binance المغلقة فقط. صفحة العمل لا تخفي أو توقف أي من هذه العمليات؛ هي مجرد واجهة مبسطة.
+  </div>
+
+</section>
+
+<!-- ===================== SETTINGS PAGE ===================== -->
+<section id="settingsPage" class="appPage">
+  <div class="detailsHeader">
+    <div>
+      <h1>الإعدادات</h1>
+      <div class="sub">إعداد تنبيهات Telegram للجدول الخامس.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="settingsGrid">
+      <div class="full">
+        <label class="fieldLabel" for="tgToken">Telegram Bot Token</label>
+        <input id="tgToken" class="textInput" type="password" autocomplete="off" placeholder="123456789:AA...">
+      </div>
+
+      <div>
+        <label class="fieldLabel" for="tgChatId">Chat ID</label>
+        <input id="tgChatId" class="textInput" type="text" autocomplete="off" placeholder="123456789 أو @channel">
+      </div>
+
+      <div>
+        <label class="fieldLabel">الحفظ</label>
+        <label class="checkRow">
+          <input id="tgPersist" type="checkbox">
+          <span>حفظ الإعدادات محليًا على هذا الجهاز</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settingsActions">
+      <button id="saveTelegram">حفظ إعدادات Telegram</button>
+      <button id="testTelegram" class="secondary">إرسال رسالة اختبار</button>
+    </div>
+
+    <div class="settingsStatus" id="telegramStatus">لم يتم حفظ إعدادات Telegram بعد.</div>
+
+    <div class="note">
+      عند دخول عملة إلى الجدول الخامس يُرسل: العملة، الفريم، السعر الحالي، سعر الدخول (إغلاق شمعة الاختراق)، ووقف الخسارة.
+      وإذا تغيرت الحالة من «مستمر» إلى أي حالة أخرى يُرسل تنبيه تغير الحالة. وإذا وصل السعر إلى وقف الخسارة يُرسل تنبيه مستقل مرة واحدة.
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+'use strict';
+
+const DAY=24*60*60e3;
+const TF={
+  '5m': {source:'5m',factor:1,ms:5*60e3,offset:0},
+  '10m':{source:'5m',factor:2,ms:10*60e3,offset:0},
+  '15m':{source:'15m',factor:1,ms:15*60e3,offset:0},
+  '30m':{source:'30m',factor:1,ms:30*60e3,offset:0},
+  '45m':{source:'15m',factor:3,ms:45*60e3,offset:0},
+  '1h': {source:'1h',factor:1,ms:60*60e3,offset:0},
+  '2h': {source:'2h',factor:1,ms:2*60*60e3,offset:0},
+  '4h': {source:'4h',factor:1,ms:4*60*60e3,offset:0},
+  '1d': {source:'1d',factor:1,ms:DAY,offset:0},
+  '1w': {source:'1w',factor:1,ms:7*DAY,offset:4*DAY}
+};
+
+const CFG={
+  length:24,
+  mult:1.4,
+  klineLimit:220,
+  scanConcurrency:8,
+  depthSampleMs:1000,
+  bidAdvMinIncrease:3.0,
+  imbalanceMinIncrease:1.0,
+  volume24hDirectThreshold:5000000,
+  volume24hIncreaseRequired:200000,
+  nominationGrowthPct:0.1,
+  rest:[
+    'https://data-api.binance.vision',
+    'https://api.binance.com',
+    'https://api1.binance.com'
+  ],
+  ws:'wss://data-stream.binance.vision'
+};
+
+const $=x=>document.getElementById(x);
+
+const PERSIST_KEY='binanceScannerPersistentTablesV1';
+let persistTimer=null;
+
+const G={
+  symbols:[],
+  serverOffset:0,
+  workers:[],
+  entries:new Map(),       // key: SYMBOL|TF
+  promoted:new Map(),      // same keys; entry remains in entries too
+  final:new Map(),         // third-stage filtered entries
+  nominationWatch:new Map(), // entries currently under intensive stage-4 watch
+  followUp:new Map(),        // persistent stage-5 entries; manual removal only
+  followDismissed:new Set(), // manually removed from stage 5 until a new breakout/reset
+  ticker24h:new Map(),     // symbol => latest quoteVolume over rolling 24h
+  tickerSubs:new Set(),
+  tickerWs:null,
+
+  // Execution routing. Exact cumulative totals and the cursor are saved on each entry.
+  execFlow:new Map(),      // symbol runtime registration only
+  execSubs:new Set(),
+  execWs:null,
+
+  depth:new Map(),         // symbol => {samples,lastSampleAt,latest}
+  depthSubs:new Set(),
+  depthWs:null,
+  renderTimer:null,
+  clockTimer:null,
+  timeSyncTimer:null,
+  telegram:{
+    token:'',
+    chatId:'',
+    enabled:false,
+    persist:false
+  },
+  followSort:{
+    key:'addedAt',
+    direction:'desc'
+  }
+};
+
+function persistentSnapshot(){
+  return{
+    version:1,
+    savedAt:Date.now(),
+
+    // Main table state
+    entries:[...G.entries.entries()],
+    promotedKeys:[...G.promoted.keys()],
+    finalKeys:[...G.final.keys()],
+    nominationWatch:[...G.nominationWatch.entries()],
+    followUp:[...G.followUp.entries()],
+    followDismissed:[...G.followDismissed],
+
+    // Preserve each worker's selected timeframe.
+    workerTimeframes:G.workers.map(w=>({
+      id:w.id,
+      tf:String($(`w${w.id}tf`)?.value||w.tf||'5m')
+    })),
+    followSort:{
+      key:G.followSort.key,
+      direction:G.followSort.direction
+    }
+  };
+}
+
+function persistStateNow(){
+  try{
+    const snapshot=persistentSnapshot();
+    localStorage.setItem(PERSIST_KEY,JSON.stringify(snapshot));
+  }catch(e){
+    // Storage can be unavailable in some browser/private modes.
+  }
+}
+
+function schedulePersistentSave(){
+  if(persistTimer)return;
+  persistTimer=setTimeout(()=>{
+    persistTimer=null;
+    persistStateNow();
+  },1200);
+}
+
+function restorePersistentState(){
+  let raw=null;
+  try{raw=localStorage.getItem(PERSIST_KEY)}catch(e){return false}
+  if(!raw)return false;
+
+  try{
+    const s=JSON.parse(raw);
+    if(!s||s.version!==1)return false;
+
+    // Rebuild the canonical entries map first.
+    G.entries.clear();
+    for(const pair of (Array.isArray(s.entries)?s.entries:[])){
+      if(!Array.isArray(pair)||pair.length!==2)continue;
+      const [key,e]=pair;
+      if(!key||!e||typeof e!=='object')continue;
+      G.entries.set(String(key),e);
+    }
+
+    // Rebuild stage maps so they reference the SAME entry objects.
+    G.promoted.clear();
+    for(const key of (Array.isArray(s.promotedKeys)?s.promotedKeys:[])){
+      const e=G.entries.get(String(key));
+      if(e)G.promoted.set(String(key),e);
+    }
+
+    G.final.clear();
+    for(const key of (Array.isArray(s.finalKeys)?s.finalKeys:[])){
+      const e=G.entries.get(String(key));
+      if(e)G.final.set(String(key),e);
+    }
+
+    G.nominationWatch.clear();
+    for(const pair of (Array.isArray(s.nominationWatch)?s.nominationWatch:[])){
+      if(!Array.isArray(pair)||pair.length!==2)continue;
+      const [key,v]=pair;
+      if(key&&v&&typeof v==='object')G.nominationWatch.set(String(key),v);
+    }
+
+    G.followUp.clear();
+    for(const pair of (Array.isArray(s.followUp)?s.followUp:[])){
+      if(!Array.isArray(pair)||pair.length!==2)continue;
+      const [key,v]=pair;
+      if(key&&v&&typeof v==='object')G.followUp.set(String(key),v);
+    }
+
+    G.followDismissed.clear();
+    for(const key of (Array.isArray(s.followDismissed)?s.followDismissed:[])){
+      G.followDismissed.add(String(key));
+    }
+
+    if(s.followSort&&typeof s.followSort==='object'){
+      const validKeys=new Set([
+        'symbol','tf','entryPrice','stopLoss','currentPrice','highPrice',
+        'maxGain','drawdown','growth','bidAdv','imbalance','status','addedAt'
+      ]);
+      const key=String(s.followSort.key||'addedAt');
+      const direction=s.followSort.direction==='asc'?'asc':'desc';
+      if(validKeys.has(key)){
+        G.followSort={key,direction};
+      }
+    }
+
+    // Restore selected timeframe for each worker, but DO NOT auto-start it.
+    const tfs=Array.isArray(s.workerTimeframes)?s.workerTimeframes:[];
+    for(const item of tfs){
+      if(!item||!Number.isFinite(+item.id))continue;
+      const w=G.workers.find(x=>x.id===+item.id);
+      const sel=$(`w${+item.id}tf`);
+      const tf=String(item.tf||'');
+      if(w&&sel&&TF[tf]){
+        w.tf=tf;
+        sel.value=tf;
+        const active=$(`w${+item.id}activeTf`);
+        if(active)active.textContent=tf;
+      }
+    }
+
+    // Reconnect live order-book + 24h ticker streams for every restored symbol.
+    const symbols=new Set();
+    for(const e of G.entries.values())if(e&&e.symbol)symbols.add(e.symbol);
+    for(const f of G.followUp.values())if(f&&f.symbol)symbols.add(f.symbol);
+
+    for(const symbol of symbols){
+      ensureDepthExact(symbol);
+      ensureTicker24h(symbol);
+      ensureExecutedFlow(symbol);
+    }
+
+    // Retain each cumulative ledger; recheck and fill missing trade IDs after reconnect.
+    for(const e of G.entries.values())ensureExecutedEntry(e);
+
+    log(`RESTORED ${G.entries.size} entries, ${G.followUp.size} follow-up rows from saved state.`);
+    return true;
+  }catch(e){
+    log('RESTORE ERROR: '+e.message);
+    return false;
+  }
+}
+
+function clearPersistedState(){
+  try{localStorage.removeItem(PERSIST_KEY)}catch(e){}
+}
+
+function now(){return Date.now()+G.serverOffset}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function log(s){
+  const t=new Date().toLocaleTimeString('ar-SA',{hour12:false});
+  $('log').textContent+=`[${t}] ${s}\n`;
+  $('log').scrollTop=$('log').scrollHeight;
+}
+function cd(ms){
+  ms=Math.max(0,ms);
+  const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;
+  return h?`${h}h ${m}m ${x}s`:`${m}m ${x}s`;
+}
+function pct(v){
+  if(!Number.isFinite(v))return '—';
+  return (v>0?'+':'')+v.toFixed(1)+'%';
+}
+function avg(arr,key){
+  if(!arr.length)return NaN;
+  let s=0;for(const x of arr)s+=x[key];
+  return s/arr.length;
+}
+
+async function api(path){
+  let last;
+  for(const b of CFG.rest){
+    try{
+      const r=await fetch(b+path,{cache:'no-store'});
+      if(!r.ok)throw Error(`HTTP ${r.status}`);
+      return await r.json();
+    }catch(e){last=e}
+  }
+  throw last||Error('Binance API');
+}
+async function syncTime(){
+  try{
+    const a=Date.now(),x=await api('/api/v3/time'),b=Date.now();
+    G.serverOffset=(+x.serverTime+(b-a)/2)-b;
+  }catch{
+    G.serverOffset=0;
+  }
+}
+
+/* ---------------- Workers UI ---------------- */
+
+function buildWorkers(){
+  const defaults=['5m','15m','1h'];
+  const opts=Object.keys(TF).map(x=>`<option value="${x}">${x}</option>`).join('');
+
+  // Work page: controls only — no worker metrics here.
+  $('workerControls').innerHTML=[1,2,3].map((id,i)=>`
+    <div class="workerControl">
+      <div class="wn">العامل ${id}</div>
+      <select id="w${id}tf">${opts}</select>
+      <div class="wbtns">
+        <button id="w${id}scan" class="secondary">فحص الآن</button>
+        <button id="w${id}stop" class="danger">إيقاف التلقائي</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Details page: all worker status / progress / maintenance data.
+  $('workerDetails').innerHTML=[1,2,3].map((id,i)=>`
+    <div class="detailWorker">
+      <div class="title">
+        <div class="wn">العامل ${id}</div>
+        <div class="state" id="w${id}s">AUTO OFF</div>
+      </div>
+
+      <div class="progress"><div id="w${id}p"></div></div>
+
+      <div class="stats">
+        <div class="stat"><div class="k">الفريم الفعلي</div><div class="v warn" id="w${id}activeTf">${defaults[i]}</div></div>
+        <div class="stat"><div class="k">شمعة Binance التالية</div><div class="v" id="w${id}cd">AUTO OFF</div></div>
+        <div class="stat"><div class="k">اختراقات العامل</div><div class="v" id="w${id}found">0</div></div>
+        <div class="stat"><div class="k">ضغط متزايد</div><div class="v good" id="w${id}prom">0</div></div>
+      </div>
+
+      <div class="wbtns">
+        <button id="w${id}start">تشغيل تلقائي للعامل</button>
+        <button id="w${id}clear" class="secondary">مسح سجلات العامل</button>
+      </div>
+    </div>
+  `).join('');
+
+  for(let i=1;i<=3;i++){
+    $(`w${i}tf`).value=defaults[i-1];
+
+    const w={
+      id:i,
+      tf:defaults[i-1],
+      running:false,
+      scanning:false,
+      abort:0,
+      timer:null,
+      nextBoundary:null,
+      pendingTargets:[]
+    };
+
+    G.workers.push(w);
+
+    $(`w${i}tf`).onchange=()=>{
+      w.tf=$(`w${i}tf`).value;
+      $(`w${i}activeTf`).textContent=w.tf;
+      updateClock(w);
+      if(w.running)scheduleNext(w);
+      persistStateNow();
+    };
+
+    $(`w${i}start`).onclick=()=>startWorker(w);
+    $(`w${i}scan`).onclick=()=>scanWorker(w,true,null,$(`w${i}tf`).value);
+    $(`w${i}stop`).onclick=()=>stopWorker(w);
+    $(`w${i}clear`).onclick=()=>clearWorkerRecords(w);
+  }
+}
+
+/* ---------------- LuxAlgo breakout ---------------- */
+
+function tr(b){
+  const a=[];
+  for(let i=0;i<b.length;i++){
+    const h=b[i].h,l=b[i].l;
+    a[i]=i?Math.max(h-l,Math.abs(h-b[i-1].c),Math.abs(l-b[i-1].c)):h-l;
+  }
+  return a;
+}
+function rma(v,L){
+  const o=new Array(v.length).fill(NaN);
+  if(v.length<L)return o;
+  let s=0;
+  for(let i=0;i<L;i++)s+=v[i];
+  let a=s/L;o[L-1]=a;
+  for(let i=L;i<v.length;i++){a=(a*(L-1)+v[i])/L;o[i]=a}
+  return o;
+}
+function ph(b,i,L){
+  const p=i-L;
+  if(p-L<0)return NaN;
+  const c=b[p].h;
+  for(let j=p-L;j<p;j++)if(b[j].h>c)return NaN;
+  for(let j=p+1;j<=p+L;j++)if(b[j].h>=c)return NaN;
+  return c;
+}
+
+function nearestSwingLow(b,breakIndex){
+  // Closest confirmed local swing low BEFORE the breakout candle,
+  // using 2 candles on each side on the same timeframe.
+  for(let i=breakIndex-1;i>=2;i--){
+    if(i+2>=breakIndex)continue;
+    const v=b[i].l;
+    if(v<b[i-1].l && v<=b[i-2].l && v<=b[i+1].l && v<b[i+2].l){
+      return v;
+    }
+  }
+
+  // Fallback: lowest low of the latest 10 closed candles before breakout.
+  const from=Math.max(0,breakIndex-10);
+  let low=Infinity;
+  for(let i=from;i<breakIndex;i++){
+    if(Number.isFinite(b[i].l))low=Math.min(low,b[i].l);
+  }
+  return Number.isFinite(low)?low:NaN;
+}
+function breaks(symbol,b,targetOpen){
+  if(b.length<70)return[];
+  const atr=rma(tr(b),CFG.length);
+  let upper=0,slope=0,upos=0;
+  const sig=[];
+
+  for(let i=0;i<b.length;i++){
+    const p=ph(b,i,CFG.length);
+    const sl=Number.isFinite(atr[i])?atr[i]/CFG.length*CFG.mult:NaN;
+    if(Number.isFinite(p)&&Number.isFinite(sl))slope=sl;
+    upper=Number.isFinite(p)?p:upper-slope;
+
+    const prev=upos;
+    const line=upper-slope*CFG.length;
+
+    if(Number.isFinite(p))upos=0;
+    else if(b[i].c>line)upos=1;
+
+    sig[i]={br:upos>prev,line};
+  }
+
+  const i=b.findIndex(x=>x.t===targetOpen);
+  if(i<0||!sig[i]||!sig[i].br)return[];
+  if(!(b[i].c>sig[i].line))return[];
+
+  return[{
+    symbol,
+    barTime:b[i].t,
+    close:b[i].c,
+    stopLoss:nearestSwingLow(b,i),
+    line:sig[i].line
+  }];
+}
+function parse(raw){
+  return raw.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],T:+k[6]}));
+}
+function aggregate(src,t){
+  if(t.factor===1)return src;
+  const out=[];
+  let g=null;
+  const off=t.offset||0;
+
+  for(const b of src){
+    const bucket=Math.floor((b.t-off)/t.ms)*t.ms+off;
+    if(!g||g.t!==bucket){
+      if(g)out.push(g);
+      g={t:bucket,o:b.o,h:b.h,l:b.l,c:b.c,T:bucket+t.ms-1};
+    }else{
+      g.h=Math.max(g.h,b.h);
+      g.l=Math.min(g.l,b.l);
+      g.c=b.c;
+    }
+  }
+  if(g)out.push(g);
+  return out;
+}
+async function bars(symbol,tf){
+  const t=TF[tf];
+  const lim=Math.min(1000,Math.max(140,CFG.klineLimit*t.factor+12));
+  const raw=await api(`/api/v3/klines?symbol=${symbol}&interval=${t.source}&limit=${lim}`);
+  return aggregate(parse(raw),t).slice(-CFG.klineLimit);
+}
+async function pool(items,n,fn,active){
+  let idx=0;
+  await Promise.all(Array.from({length:n},async()=>{
+    while(active()){
+      const i=idx++;
+      if(i>=items.length)break;
+      await fn(items[i],i);
+    }
+  }));
+}
+
+
+/* ---------------- 24h quote volume ---------------- */
+
+function startTicker24h(){
+  if(G.tickerWs){
+    try{G.tickerWs.close()}catch{}
+  }
+
+  const ws=new WebSocket(CFG.ws+'/stream');
+  G.tickerWs=ws;
+
+  ws.onopen=async()=>{
+    log('Shared 24h ticker WebSocket connected.');
+
+    const params=[...G.tickerSubs].map(
+      s=>s.toLowerCase()+'@ticker'
+    );
+
+    for(let i=0;i<params.length;i+=100){
+      ws.send(JSON.stringify({
+        method:'SUBSCRIBE',
+        params:params.slice(i,i+100),
+        id:5000+i
+      }));
+      await sleep(100);
+    }
+  };
+
+  ws.onmessage=e=>{
+    let msg;
+    try{msg=JSON.parse(e.data)}catch{return}
+    if(!msg||!msg.stream||!msg.data)return;
+
+    const at=msg.stream.indexOf('@');
+    if(at<=0)return;
+
+    const symbol=msg.stream.slice(0,at).toUpperCase();
+    const q=+(msg.data.q);
+    const c=+(msg.data.c);
+    if(Number.isFinite(q)&&q>=0){
+      G.ticker24h.set(symbol,{
+        quoteVolume:q,
+        lastPrice:Number.isFinite(c)&&c>0?c:NaN
+      });
+    }
+  };
+
+  ws.onclose=()=>{
+    if(G.tickerSubs.size){
+      setTimeout(startTicker24h,1800);
+    }
+  };
+
+  ws.onerror=()=>{};
+}
+
+function ensureTicker24h(symbol){
+  if(G.tickerSubs.has(symbol))return;
+
+  G.tickerSubs.add(symbol);
+
+  if(G.tickerWs&&G.tickerWs.readyState===WebSocket.OPEN){
+    G.tickerWs.send(JSON.stringify({
+      method:'SUBSCRIBE',
+      params:[symbol.toLowerCase()+'@ticker'],
+      id:Date.now()%1000000000
+    }));
+  }
+}
+
+function current24hVolume(symbol){
+  const v=G.ticker24h.get(symbol);
+  if(v&&typeof v==='object')return Number.isFinite(v.quoteVolume)?v.quoteVolume:NaN;
+  return Number.isFinite(v)?v:NaN;
+}
+
+function currentPrice(symbol){
+  const v=G.ticker24h.get(symbol);
+  return v&&typeof v==='object'&&Number.isFinite(v.lastPrice)?v.lastPrice:NaN;
+}
+
+function fmtPrice(v){
+  if(!Number.isFinite(v))return '—';
+  if(v>=1000)return v.toFixed(2);
+  if(v>=1)return v.toFixed(4);
+  if(v>=0.01)return v.toFixed(6);
+  return v.toFixed(8);
+}
+
+function fmtUSDT(v){
+  if(!Number.isFinite(v))return '—';
+  if(v>=1e9)return (v/1e9).toFixed(2)+'B';
+  if(v>=1e6)return (v/1e6).toFixed(2)+'M';
+  if(v>=1e3)return (v/1e3).toFixed(1)+'K';
+  return v.toFixed(0);
+}
+
+function growthPct(cur,base){
+  if(!Number.isFinite(cur)||!Number.isFinite(base)||base<=0)return NaN;
+  return (cur/base-1)*100;
+}
+
+function telegramConfigured(){
+  return !!(G.telegram.enabled && G.telegram.token && G.telegram.chatId);
+}
+
+function setTelegramStatus(msg,ok=null){
+  const el=$('telegramStatus');
+  if(!el)return;
+  el.textContent=msg;
+  el.className='settingsStatus'+(ok===true?' good':ok===false?' bad':'');
+}
+
+function loadTelegramSettings(){
+  try{
+    const raw=localStorage.getItem('binanceScannerTelegram');
+    if(!raw)return;
+    const x=JSON.parse(raw);
+    if(!x||typeof x!=='object')return;
+    G.telegram.token=String(x.token||'');
+    G.telegram.chatId=String(x.chatId||'');
+    G.telegram.persist=true;
+    G.telegram.enabled=!!(G.telegram.token&&G.telegram.chatId);
+
+    $('tgToken').value=G.telegram.token;
+    $('tgChatId').value=G.telegram.chatId;
+    $('tgPersist').checked=true;
+    setTelegramStatus(G.telegram.enabled?'تم تحميل إعدادات Telegram المحفوظة.':'الإعدادات المحفوظة غير مكتملة.',G.telegram.enabled);
+  }catch(e){}
+}
+
+function saveTelegramSettings(){
+  const token=String($('tgToken').value||'').trim();
+  const chatId=String($('tgChatId').value||'').trim();
+  const persist=!!$('tgPersist').checked;
+
+  G.telegram.token=token;
+  G.telegram.chatId=chatId;
+  G.telegram.persist=persist;
+  G.telegram.enabled=!!(token&&chatId);
+
+  try{
+    if(persist && G.telegram.enabled){
+      localStorage.setItem('binanceScannerTelegram',JSON.stringify({token,chatId}));
+    }else{
+      localStorage.removeItem('binanceScannerTelegram');
+    }
+  }catch(e){}
+
+  setTelegramStatus(
+    G.telegram.enabled
+      ? 'تم حفظ إعدادات Telegram في الجلسة'+(persist?' وعلى هذا الجهاز.':'.')
+      : 'أدخل Bot Token وChat ID كاملين.',
+    G.telegram.enabled
+  );
+}
+
+async function sendTelegram(textMessage){
+  if(!telegramConfigured())return false;
+
+  try{
+    const url=`https://api.telegram.org/bot${G.telegram.token}/sendMessage`;
+    const r=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        chat_id:G.telegram.chatId,
+        text:String(textMessage),
+        disable_web_page_preview:true
+      })
+    });
+
+    const data=await r.json().catch(()=>null);
+    if(!r.ok || !data || data.ok!==true){
+      const desc=data&&data.description?data.description:`HTTP ${r.status}`;
+      setTelegramStatus('فشل إرسال Telegram: '+desc,false);
+      return false;
+    }
+
+    setTelegramStatus('تم إرسال آخر تنبيه Telegram بنجاح.',true);
+    return true;
+  }catch(e){
+    setTelegramStatus('تعذر إرسال Telegram من المتصفح: '+e.message,false);
+    return false;
+  }
+}
+
+function telegramEntryMessage(f,current){
+  return [
+    '🚨 ترشيح جديد',
+    `${f.symbol} | ${f.tf}`,
+    `السعر الحالي: ${fmtPrice(current)}`,
+    `سعر الدخول: ${fmtPrice(f.entryPrice)}`,
+    `وقف الخسارة: ${fmtPrice(f.stopLoss)}`
+  ].join('\n');
+}
+
+function telegramStatusMessage(f,oldStatus,newStatus,current){
+  return [
+    '⚠️ تغير حالة',
+    `${f.symbol} | ${f.tf}`,
+    `${oldStatus} → ${newStatus}`,
+    `السعر الحالي: ${fmtPrice(current)}`,
+    `سعر الدخول: ${fmtPrice(f.entryPrice)}`,
+    `وقف الخسارة: ${fmtPrice(f.stopLoss)}`
+  ].join('\n');
+}
+
+function telegramStopMessage(f,current){
+  return [
+    '🛑 وقف الخسارة',
+    `${f.symbol} | ${f.tf}`,
+    `السعر الحالي: ${fmtPrice(current)}`,
+    `سعر الدخول: ${fmtPrice(f.entryPrice)}`,
+    `وقف الخسارة: ${fmtPrice(f.stopLoss)}`
+  ].join('\n');
+}
+
+function ensureFollowUp(x){
+  if(!x||!x.e||!x.nominated)return;
+  const key=x.e.key;
+  if(G.followDismissed.has(key))return;
+  if(G.followUp.has(key))return;
+
+  const p=currentPrice(x.e.symbol);
+  const entry={
+    key,
+    symbol:x.e.symbol,
+    tf:x.e.tf,
+    workerId:x.e.workerId,
+    addedAt:now(),
+    entryPrice:Number.isFinite(x.e.breakoutClose)?x.e.breakoutClose:NaN,
+    stopLoss:Number.isFinite(x.e.stopLoss)?x.e.stopLoss:NaN,
+    highPrice:Number.isFinite(p)?p:NaN,
+    lastStatus:null,
+    entryAlertSent:false,
+    stopLossAlerted:false
+  };
+  G.followUp.set(key,entry);
+  log(`FOLLOW5 ADD ${entry.symbol} ${entry.tf} entry=${fmtPrice(entry.entryPrice)} sl=${fmtPrice(entry.stopLoss)}`);
+
+  if(telegramConfigured()){
+    entry.entryAlertSent=true;
+    sendTelegram(telegramEntryMessage(entry,p));
+  }
+}
+
+function deleteFollowUp(key){
+  if(!G.followUp.has(key))return;
+  const x=G.followUp.get(key);
+  G.followDismissed.add(key);
+  G.followUp.delete(key);
+  log(`FOLLOW5 DELETE ${x.symbol} ${x.tf}`);
+  renderAll();
+  persistStateNow();
+}
+
+function clearFollowTable(){
+  for(const key of G.followUp.keys())G.followDismissed.add(key);
+  G.followUp.clear();
+  log('FOLLOW5 TABLE CLEARED');
+  renderAll();
+  persistStateNow();
+}
+
+
+function timeframeRank(tf){
+  const order={
+    '5m':5,'10m':10,'15m':15,'30m':30,'45m':45,
+    '1h':60,'2h':120,'4h':240,'1d':1440,'1w':10080
+  };
+  return Number.isFinite(order[tf])?order[tf]:0;
+}
+
+function statusRank(status){
+  const rank={
+    'مستمر':4,
+    'يضعف':3,
+    'احتمال انتهاء':2,
+    'تجميع البيانات':1
+  };
+  return rank[status]||0;
+}
+
+function safeNumber(v){
+  return Number.isFinite(v)?v:-Infinity;
+}
+
+function compareText(a,b){
+  return String(a??'').localeCompare(String(b??''),'en',{numeric:true,sensitivity:'base'});
+}
+
+function sortFollowRows(rows){
+  const key=G.followSort.key;
+  const dir=G.followSort.direction==='asc'?1:-1;
+
+  return rows.sort((a,b)=>{
+    let av,bv;
+
+    switch(key){
+      case 'symbol':
+        return compareText(a.f.symbol,b.f.symbol)*dir;
+      case 'tf':
+        av=timeframeRank(a.f.tf); bv=timeframeRank(b.f.tf); break;
+      case 'entryPrice':
+        av=safeNumber(a.f.entryPrice); bv=safeNumber(b.f.entryPrice); break;
+      case 'stopLoss':
+        av=safeNumber(a.stopLoss); bv=safeNumber(b.stopLoss); break;
+      case 'currentPrice':
+        av=safeNumber(a.currentPrice); bv=safeNumber(b.currentPrice); break;
+      case 'highPrice':
+        av=safeNumber(a.highPrice); bv=safeNumber(b.highPrice); break;
+      case 'maxGain':
+        av=safeNumber(a.maxGain); bv=safeNumber(b.maxGain); break;
+      case 'drawdown':
+        av=safeNumber(a.drawdown); bv=safeNumber(b.drawdown); break;
+      case 'growth':
+        av=safeNumber(a.growth); bv=safeNumber(b.growth); break;
+      case 'bidAdv':
+        av=safeNumber(a.bidAdv); bv=safeNumber(b.bidAdv); break;
+      case 'imbalance':
+        av=safeNumber(a.imbalance); bv=safeNumber(b.imbalance); break;
+      case 'status':
+        av=statusRank(a.status); bv=statusRank(b.status); break;
+      case 'addedAt':
+      default:
+        av=safeNumber(a.f.addedAt); bv=safeNumber(b.f.addedAt); break;
+    }
+
+    if(av===bv)return compareText(a.f.symbol,b.f.symbol);
+    return (av-bv)*dir;
+  });
+}
+
+function updateFollowSortHeaders(){
+  for(const th of document.querySelectorAll('[data-follow-sort]')){
+    const key=th.getAttribute('data-follow-sort');
+    const active=key===G.followSort.key;
+    th.classList.toggle('activeSort',active);
+    const arrow=th.querySelector('.sortArrow');
+    if(arrow){
+      arrow.textContent=active?(G.followSort.direction==='desc'?'▼':'▲'):'';
+    }
+  }
+}
+
+function initFollowSorting(){
+  for(const th of document.querySelectorAll('[data-follow-sort]')){
+    th.addEventListener('click',()=>{
+      const key=th.getAttribute('data-follow-sort');
+
+      if(G.followSort.key===key){
+        G.followSort.direction=G.followSort.direction==='desc'?'asc':'desc';
+      }else{
+        G.followSort.key=key;
+        G.followSort.direction='desc';
+      }
+
+      updateFollowSortHeaders();
+      persistStateNow();
+      renderAll();
+    });
+  }
+  updateFollowSortHeaders();
+}
+
+function followStatus(row){
+  if(!Number.isFinite(row.currentPrice)||!Number.isFinite(row.highPrice)||!Number.isFinite(row.growth)){
+    return 'تجميع البيانات';
+  }
+
+  if(row.growth<=0 && row.drawdown<=-2){
+    return 'احتمال انتهاء';
+  }
+  if(row.drawdown<=-1 || row.growth<CFG.nominationGrowthPct){
+    return 'يضعف';
+  }
+  return 'مستمر';
+}
+
+
+function maybePromoteFinal(){
+  for(const entry of G.promoted.values()){
+    if(G.final.has(entry.key))continue;
+
+    const cur=current24hVolume(entry.symbol);
+    if(!Number.isFinite(cur))continue;
+
+    if(!Number.isFinite(entry.volume24hBaseline)){
+      entry.volume24hBaseline=cur;
+      entry.volume24hBaselineAt=now();
+    }
+
+    const base=entry.volume24hBaseline;
+    const increase=cur-base;
+
+    if(base>CFG.volume24hDirectThreshold){
+      entry.finalAt=now();
+      entry.finalReason='24h > 5M';
+      entry.finalIncrease=increase;
+      G.final.set(entry.key,entry);
+      log(`FINAL ${entry.symbol} ${entry.tf} 24h=${fmtUSDT(cur)} direct >5M`);
+      continue;
+    }
+
+    if(increase>=CFG.volume24hIncreaseRequired){
+      entry.finalAt=now();
+      entry.finalReason='+200K from baseline';
+      entry.finalIncrease=increase;
+      G.final.set(entry.key,entry);
+      log(`FINAL ${entry.symbol} ${entry.tf} 24h=${fmtUSDT(cur)} increase=${fmtUSDT(increase)}`);
+    }
+  }
+}
+
+
+
+/* ---------------- Cumulative executed BUY / SELL ----------------
+   Only admission rule: complete cumulative Buy USDT > Sell USDT.
+   Start: the CLOSE of the confirmed breakout candle (UTC Binance bars).
+   REST aggTrades restores the history; WebSocket continues the same ledger.
+   Transport batching/retry delays below are NOT trading/measurement windows.
+   Sources: Binance Spot rest-api.md and web-socket-streams.md, aggTrade.
+------------------------------------------------------------------ */
+const EXEC_LEDGER_VERSION=1;
+const EX={
+  enabled:false, epoch:0, connection:0, states:new Map(), queue:[], active:0,
+  controllers:new Set(), acknowledged:new Set(), commands:new Map(),
+  commandId:800000, commandTimer:null, reconnectTimer:null,
+  nextRequestAt:0, blockedUntil:0
+};
+
+function execStartTime(entry){
+  const open=Number(entry.lastBreak??entry.firstBreak);
+  const tf=TF[entry.tf];
+  if(!tf||!Number.isSafeInteger(open)||open<=0)throw Error('وقت الاختراق غير صالح');
+  return open+tf.ms;
+}
+function execValidLedger(f,start){
+  return !!(f&&f.version===EXEC_LEDGER_VERSION&&f.from===start&&
+    Number.isInteger(f.scale)&&f.scale>=0&&f.scale<=64&&
+    typeof f.buyUnits==='string'&&/^\d+$/.test(f.buyUnits)&&
+    typeof f.sellUnits==='string'&&/^\d+$/.test(f.sellUnits)&&
+    (f.lastId===null||(Number.isSafeInteger(f.lastId)&&f.lastId>=0))&&
+    Number.isFinite(f.lastTime)&&Number.isFinite(f.checkedThrough));
+}
+function execFreshLedger(start){
+  return {version:EXEC_LEDGER_VERSION,from:start,buyUnits:'0',sellUnits:'0',scale:0,
+    lastId:null,lastTime:0,checkedThrough:start-1,records:0};
+}
+function execRuntime(entry){
+  const start=execStartTime(entry);
+  // Older versions never saved complete history. Rebuild once, not from a live baseline.
+  if(!execValidLedger(entry.executedTotals,start))entry.executedTotals=execFreshLedger(start);
+  let r=EX.states.get(entry.key);
+  if(!r||r.entry!==entry||r.ledger!==entry.executedTotals){
+    r={entry,ledger:entry.executedTotals,mode:'waiting',queued:false,busy:false,
+      buffer:new Map(),error:'',retryAt:0,retryTimer:null,pages:0};
+    EX.states.set(entry.key,r);
+  }
+  return r;
+}
+function execCurrent(r){
+  return G.entries.get(r.entry.key)===r.entry&&
+    r.entry.executedTotals===r.ledger&&EX.states.get(r.entry.key)===r;
+}
+function ensureExecutedFlow(symbol){
+  if(!G.execFlow.has(symbol))G.execFlow.set(symbol,{}); // routing only; sums live in each entry
+  G.execSubs.add(symbol);
+  if(EX.enabled){startExecutedFlow();scheduleExecControl();}
+}
+function ensureExecutedEntry(entry){
+  const r=execRuntime(entry);
+  ensureExecutedFlow(entry.symbol);
+  if(EX.acknowledged.has(entry.symbol))queueExecSync(r);
+  return r;
+}
+
+// Decimal arithmetic: equality of totals must not depend on float round-off.
+function execDecimal(value){
+  const s=String(value);
+  if(!/^\d+(?:\.\d+)?$/.test(s))throw Error('رقم صفقة غير صالح');
+  const parts=s.split('.'),frac=parts[1]||'';
+  if(frac.length>32)throw Error('دقة رقم الصفقة غير مدعومة');
+  const units=BigInt(parts[0]+frac);
+  if(units<=0n)throw Error('سعر أو كمية غير موجبة');
+  return {units,scale:frac.length};
+}
+function execNormalize(d){
+  if(!d||!Number.isSafeInteger(Number(d.a))||Number(d.a)<0||
+    !Number.isSafeInteger(Number(d.T))||Number(d.T)<=0||typeof d.m!=='boolean'){
+    throw Error('بيانات صفقة aggTrade ناقصة أو غير صالحة');
+  }
+  const p=execDecimal(d.p),q=execDecimal(d.q);
+  return {a:Number(d.a),T:Number(d.T),m:d.m,
+    units:p.units*q.units,scale:p.scale+q.scale};
+}
+function execAccumulate(f,d){
+  if(f.lastId!==null&&d.a<=f.lastId)return false;
+  if(f.lastId!==null&&d.a!==f.lastId+1)throw Error('فجوة في معرفات التنفيذ؛ جارٍ استكمالها');
+  if(f.lastTime&&d.T<f.lastTime)throw Error('توقيت الصفقات غير مرتب');
+  if(d.T>=f.from){
+    const scale=Math.max(f.scale,d.scale);
+    const oldFactor=10n**BigInt(scale-f.scale);
+    const notional=d.units*(10n**BigInt(scale-d.scale));
+    let buy=BigInt(f.buyUnits)*oldFactor,sell=BigInt(f.sellUnits)*oldFactor;
+    if(d.m===false)buy+=notional;else sell+=notional;
+    f.buyUnits=buy.toString();f.sellUnits=sell.toString();f.scale=scale;
+    f.records=(f.records||0)+1;
+  }
+  f.lastId=d.a;f.lastTime=d.T;
+  f.checkedThrough=Math.max(f.checkedThrough,d.T);
+  return true;
+}
+function execBuffer(r,d){
+  if(r.ledger.lastId!==null&&d.a<=r.ledger.lastId)return;
+  // Bounded transport cache only. Missing messages are recovered by ID from REST.
+  if(r.buffer.size>=10000){r.buffer.clear();r.mode='waiting';}
+  r.buffer.set(d.a,d);
+}
+function handleExecutedTrade(d){
+  const symbol=String(d.s||'');
+  if(!G.execSubs.has(symbol))return;
+  let trade;
+  try{trade=execNormalize(d);}catch(e){
+    for(const r of EX.states.values())if(r.entry.symbol===symbol&&execCurrent(r)){
+      r.mode='error';r.error=e.message;queueExecSync(r);
+    }
+    return;
+  }
+  // Promoted rows are deliberately NOT skipped. Every signal keeps its own sums.
+  for(const entry of G.entries.values()){
+    if(entry.symbol!==symbol)continue;
+    const r=execRuntime(entry),f=r.ledger;
+    if(f.lastId!==null&&trade.a<=f.lastId)continue; // duplicate REST/WS or reconnect overlap
+    if(r.mode==='live'&&EX.acknowledged.has(symbol)){
+      try{
+        execAccumulate(f,trade);
+        maybePromoteExecutedEntry(entry);
+        schedulePersistentSave();
+      }catch(e){
+        r.mode='waiting';r.error=e.message;execBuffer(r,trade);queueExecSync(r);
+      }
+    }else{
+      execBuffer(r,trade);queueExecSync(r);
+    }
+  }
+}
+
+/* Shared WebSocket, batched and acknowledged subscriptions. */
+function scheduleExecControl(){
+  if(!EX.enabled||EX.commandTimer)return;
+  EX.commandTimer=setTimeout(()=>{EX.commandTimer=null;reconcileExecSubscriptions();},350);
+}
+function reconcileExecSubscriptions(){
+  const ws=G.execWs;
+  if(!EX.enabled||!ws||ws.readyState!==WebSocket.OPEN)return;
+  const outstanding=new Set();
+  for(const c of EX.commands.values())for(const s of c.symbols)outstanding.add(s);
+  const remove=[...EX.acknowledged].filter(s=>!G.execSubs.has(s)&&!outstanding.has(s));
+  const add=[...G.execSubs].filter(s=>!EX.acknowledged.has(s)&&!outstanding.has(s));
+  const symbols=(remove.length?remove:add).slice(0,100);
+  if(!symbols.length)return;
+  const method=remove.length?'UNSUBSCRIBE':'SUBSCRIBE';
+  const id=++EX.commandId,epoch=EX.epoch;
+  const timer=setTimeout(()=>{
+    if(EX.commands.has(id)&&G.execWs===ws){log('EXEC: انتهت مهلة الاشتراك؛ إعادة الاتصال');ws.close();}
+  },10000);
+  EX.commands.set(id,{method,symbols,timer,epoch});
+  ws.send(JSON.stringify({method,params:symbols.map(s=>s.toLowerCase()+'@aggTrade'),id}));
+  scheduleExecControl();
+}
+function startExecutedFlow(){
+  EX.enabled=true;
+  if(G.execWs&&(G.execWs.readyState===WebSocket.OPEN||G.execWs.readyState===WebSocket.CONNECTING))return;
+  if(!G.execSubs.size)return;
+  if(EX.reconnectTimer){clearTimeout(EX.reconnectTimer);EX.reconnectTimer=null;}
+  const ws=new WebSocket(CFG.ws+'/ws');
+  G.execWs=ws;
+  ws.onopen=()=>{
+    if(G.execWs!==ws)return;
+    EX.connection++;
+    EX.acknowledged.clear();
+    scheduleExecControl();
+  };
+  ws.onmessage=e=>{
+    if(G.execWs!==ws)return;
+    let d;try{d=JSON.parse(e.data);}catch{return;}
+    if(d&&d.id!=null&&EX.commands.has(d.id)){
+      const cmd=EX.commands.get(d.id);clearTimeout(cmd.timer);EX.commands.delete(d.id);
+      if(cmd.epoch!==EX.epoch)return;
+      if(d.code!==undefined||d.result!==null){log('EXEC: رفض اشتراك البيانات');ws.close();return;}
+      for(const symbol of cmd.symbols){
+        if(cmd.method==='SUBSCRIBE'){
+          EX.acknowledged.add(symbol);
+          if(G.execSubs.has(symbol))for(const entry of G.entries.values()){
+            if(entry.symbol===symbol)queueExecSync(execRuntime(entry));
+          }
+        }else EX.acknowledged.delete(symbol);
+      }
+      scheduleExecControl();return;
+    }
+    if(d&&d.e==='aggTrade')handleExecutedTrade(d);
+    if(d&&d.e==='serverShutdown')ws.close();
+  };
+  ws.onclose=()=>{
+    if(G.execWs!==ws)return;
+    G.execWs=null;EX.connection++;
+    EX.acknowledged.clear();
+    for(const c of EX.commands.values())clearTimeout(c.timer);
+    EX.commands.clear();
+    for(const r of EX.states.values())if(execCurrent(r))r.mode='waiting';
+    for(const c of EX.controllers)c.abort();
+    if(EX.enabled&&G.execSubs.size){
+      EX.reconnectTimer=setTimeout(()=>{EX.reconnectTimer=null;startExecutedFlow();},1800);
+    }
+  };
+  ws.onerror=()=>{}; // onclose drives recovery; old numbers never qualify a new signal offline
+}
+
+/* REST catch-up. Limits/delays apply to transport, not to the BUY > SELL rule. */
+async function execRequest(params,epoch){
+  const slot=Math.max(Date.now(),EX.nextRequestAt,EX.blockedUntil);
+  EX.nextRequestAt=slot+250;
+  if(slot>Date.now())await sleep(slot-Date.now());
+  if(epoch!==EX.epoch)throw Error('إلغاء الاسترجاع');
+  if(EX.blockedUntil>Date.now())await sleep(EX.blockedUntil-Date.now());
+  let last;
+  for(const base of CFG.rest){
+    if(epoch!==EX.epoch)throw Error('إلغاء الاسترجاع');
+    const controller=new AbortController();EX.controllers.add(controller);
+    const timeout=setTimeout(()=>controller.abort(),15000);
+    try{
+      const url=base+'/api/v3/aggTrades?'+new URLSearchParams(params).toString();
+      const response=await fetch(url,{cache:'no-store',signal:controller.signal});
+      if(response.status===429||response.status===418){
+        const retry=Number(response.headers.get('Retry-After'));
+        EX.blockedUntil=Date.now()+(Number.isFinite(retry)&&retry>0?retry*1000:60000);
+        const error=Error('حد طلبات Binance؛ الانتظار ثم استكمال نفس الحساب');
+        error.noFallback=true;throw error;
+      }
+      if(!response.ok){
+        const error=Error('استرجاع التنفيذ: HTTP '+response.status);
+        error.noFallback=response.status>=400&&response.status<500;
+        throw error;
+      }
+      const data=await response.json();
+      if(!Array.isArray(data)){const error=Error('صيغة استرجاع التنفيذ غير صالحة');error.noFallback=true;throw error;}
+      return data.map(execNormalize).sort((a,b)=>a.a-b.a);
+    }catch(e){
+      if(e.noFallback||epoch!==EX.epoch)throw e;
+      last=e;
+    }finally{clearTimeout(timeout);EX.controllers.delete(controller);}
+  }
+  throw last||Error('تعذر استرجاع سجل التنفيذ');
+}
+function queueExecSync(r){
+  if(!execCurrent(r)||!EX.enabled||!EX.acknowledged.has(r.entry.symbol)||r.queued||r.busy)return;
+  if(r.retryAt>Date.now())return;
+  r.queued=true;r.mode='waiting';EX.queue.push(r);pumpExecSync();
+}
+function pumpExecSync(){
+  while(EX.active<2&&EX.queue.length){
+    const r=EX.queue.shift();r.queued=false;
+    if(!execCurrent(r)||!EX.acknowledged.has(r.entry.symbol))continue;
+    const epoch=EX.epoch,connection=EX.connection;
+    r.busy=true;r.mode='syncing';EX.active++;
+    syncExecutedEntry(r,epoch,connection).catch(e=>{
+      if(!execCurrent(r)||epoch!==EX.epoch)return;
+      r.mode='error';r.error=String(e.message||e);
+      r.retryAt=Math.max(Date.now()+5000,EX.blockedUntil);
+      log(`EXEC ${r.entry.symbol} ${r.entry.tf}: ${r.error}`);
+      if(r.retryTimer)clearTimeout(r.retryTimer);
+      r.retryTimer=setTimeout(()=>{r.retryTimer=null;queueExecSync(r);},Math.max(0,r.retryAt-Date.now()));
+    }).finally(()=>{
+      r.busy=false;EX.active=Math.max(0,EX.active-1);
+      if(execCurrent(r)&&epoch===EX.epoch&&r.mode==='waiting')queueExecSync(r);
+      pumpExecSync();
+    });
+  }
+}
+function assertExecSession(r,epoch,connection){
+  if(!execCurrent(r)||epoch!==EX.epoch)throw Error('تم حذف السجل أو تغيّر الاختراق');
+  if(connection!==EX.connection||!EX.acknowledged.has(r.entry.symbol))throw Error('الاتصال انقطع؛ استكمال الفجوة عند العودة');
+}
+async function syncExecutedEntry(r,epoch,connection){
+  assertExecSession(r,epoch,connection);
+  const entry=r.entry,f=r.ledger;
+  const latest=await execRequest({symbol:entry.symbol,limit:'1'},epoch);
+  assertExecSession(r,epoch,connection);
+  let target=latest.length?latest[latest.length-1]:null;
+  for(const d of r.buffer.values())if(!target||d.a>target.a)target=d;
+  if(!target){
+    if(f.lastId!==null)throw Error('تعذر التحقق من أحدث سجل تنفيذ');
+    f.checkedThrough=Math.max(f.checkedThrough,now());
+  }else if(target.T<f.from&&f.lastId===null){
+    // A verified cursor before the breakout; no trade in the requested period yet.
+    f.lastId=target.a;f.lastTime=target.T;f.checkedThrough=f.from-1;
+  }
+  while(target){
+    while(f.lastId===null||f.lastId<target.a){
+      assertExecSession(r,epoch,connection);
+      const params={symbol:entry.symbol,limit:'1000'};
+      if(f.lastId===null)params.startTime=String(f.from);
+      else params.fromId=String(f.lastId+1);
+      const batch=await execRequest(params,epoch);
+      assertExecSession(r,epoch,connection);
+      if(!batch.length)throw Error('سجل التنفيذ لم يكتمل بعد؛ لا ترشيح من بيانات ناقصة');
+      const before=f.lastId;
+      for(const d of batch){
+        if(d.a>target.a){execBuffer(r,d);continue;}
+        if(f.lastId===null&&d.T<f.from)continue;
+        execAccumulate(f,d);
+      }
+      if(before===f.lastId)throw Error('لم يتقدم مؤشر استرجاع التنفيذ');
+      r.pages++;
+      schedulePersistentSave();
+    }
+    // REST + stream overlap is removed by ID, including trades sharing a millisecond.
+    let missing=null;
+    for(const d of [...r.buffer.values()].sort((a,b)=>a.a-b.a)){
+      if(f.lastId!==null&&d.a<=f.lastId){r.buffer.delete(d.a);continue;}
+      if(f.lastId===null||d.a===f.lastId+1){execAccumulate(f,d);r.buffer.delete(d.a);}
+      else {missing=d;break;}
+    }
+    if(!missing)break;
+    target=missing;
+    for(const d of r.buffer.values())if(d.a>target.a)target=d;
+  }
+  assertExecSession(r,epoch,connection);
+  r.mode='live';r.error='';r.retryAt=0;
+  // All fetched IDs are contiguous; the subscribed stream now extends the same ledger.
+  log(`EXEC READY ${entry.symbol} ${entry.tf}: ${f.records||0} aggTrades منذ ${new Date(f.from).toISOString()}`);
+  maybePromoteExecutedEntry(entry);
+  persistStateNow();
+}
+
+function executionMetrics(entry){
+  const r=execRuntime(entry),f=r.ledger;
+  const divisor=10**f.scale;
+  const buy=Number(f.buyUnits)/divisor,sell=Number(f.sellUnits)/divisor,total=buy+sell;
+  const ready=r.mode==='live'&&EX.acknowledged.has(entry.symbol);
+  const buyGreater=BigInt(f.buyUnits)>BigInt(f.sellUnits);
+  return {ready,pass:ready&&buyGreater,buy,sell,total,
+    buySell:sell>0?buy/sell:(buy>0?Infinity:NaN),
+    imbalance:total>0?(buy-sell)/total*100:NaN,
+    net:buy-sell,from:f.from,lastId:f.lastId,lastTime:f.lastTime,
+    records:f.records||0,mode:r.mode,error:r.error,
+    side:buyGreater?'شراء أكبر':BigInt(f.buyUnits)<BigInt(f.sellUnits)?'بيع أكبر':'متساويان'};
+}
+function fmtExecUSDT(v){return Number.isFinite(v)?fmtUSDT(v)+' USDT':'—';}
+function fmtBuySell(v){return v===Infinity?'∞':Number.isFinite(v)?v.toFixed(2)+'x':'—';}
+function executedDataLabel(m){
+  if(m.ready)return 'متصل — حساب مكتمل';
+  if(m.mode==='syncing')return 'جارٍ استكمال الصفقات السابقة';
+  if(m.mode==='error')return 'بيانات غير مكتملة — إعادة المحاولة';
+  return 'بانتظار الاتصال / استكمال البيانات';
+}
+function releaseExecutedSymbol(symbol){
+  G.execSubs.delete(symbol);G.execFlow.delete(symbol);
+  for(const [key,r] of EX.states){
+    if(r.entry.symbol===symbol&&!execCurrent(r)){
+      if(r.retryTimer)clearTimeout(r.retryTimer);
+      EX.states.delete(key);
+    }
+  }
+  scheduleExecControl();
+}
+function resetExecutedRuntime(){
+  EX.epoch++;EX.connection++;EX.queue.length=0;
+  for(const controller of EX.controllers)controller.abort();
+  for(const r of EX.states.values())if(r.retryTimer)clearTimeout(r.retryTimer);
+  EX.states.clear();
+  for(const c of EX.commands.values())clearTimeout(c.timer);
+  EX.commands.clear();EX.acknowledged.clear();
+  if(EX.commandTimer){clearTimeout(EX.commandTimer);EX.commandTimer=null;}
+  if(EX.reconnectTimer){clearTimeout(EX.reconnectTimer);EX.reconnectTimer=null;}
+  const ws=G.execWs;G.execWs=null;
+  if(ws)try{ws.close();}catch{}
+}
+// Reopening a suspended tab must reconcile IDs before trusting a new admission.
+// Sums are never zeroed here, and no price/volume filter is added.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible'||!EX.enabled)return;
+  for(const r of EX.states.values())if(execCurrent(r)){
+    r.mode='waiting';r.retryAt=0;queueExecSync(r);
+  }
+});
+window.addEventListener('online',()=>{if(EX.enabled)startExecutedFlow();});
+
+
+/* ---------------- Order book ---------------- */
+
+function ensureDepth(symbol){
+  if(!G.depth.has(symbol)){
+    G.depth.set(symbol,{samples:[],lastSampleAt:0,latest:null});
+  }
+  if(G.depthSubs.has(symbol))return;
+
+  G.depthSubs.add(symbol);
+
+  if(G.depthWs&&G.depthWs.readyState===WebSocket.OPEN){
+    G.depthWs.send(JSON.stringify({
+      method:'SUBSCRIBE',
+      params:[symbol.toLowerCase()+'@depth20@100ms'],
+      id:Date.now()%1000000000
+    }));
+  }
+}
+
+function depthSnapshot(symbol,d){
+  const bids=d.bids||d.b||[];
+  const asks=d.asks||d.a||[];
+  if(!bids.length||!asks.length)return;
+
+  let bid=0,ask=0;
+
+  for(const x of bids){
+    const p=+x[0],q=+x[1];
+    if(p>0&&q>0)bid+=p*q;
+  }
+  for(const x of asks){
+    const p=+x[0],q=+x[1];
+    if(p>0&&q>0)ask+=p*q;
+  }
+  if(!(bid>0&&ask>0))return;
+
+  const bidAdv=(bid/ask-1)*100;
+  const imbalance=(bid-ask)/(bid+ask)*100;
+  const t=now();
+
+  const st=G.depth.get(symbol);
+  if(!st)return;
+
+  st.latest={t,bid,ask,bidAdv,imbalance};
+
+  if(t-st.lastSampleAt>=CFG.depthSampleMs){
+    st.samples.push(st.latest);
+    st.lastSampleAt=t;
+
+    const cutoff=t-180000;
+    while(st.samples.length&&st.samples[0].t<cutoff){
+      st.samples.shift();
+    }
+  }
+}
+
+function startDepth(){
+  if(G.depthWs){
+    try{G.depthWs.close()}catch{}
+  }
+
+  // /stream returns {stream, data}, allowing one socket to monitor all symbols.
+  const ws=new WebSocket(CFG.ws+'/stream');
+  G.depthWs=ws;
+
+  ws.onopen=async()=>{
+    log('Shared order-book WebSocket connected.');
+
+    const params=[...G.depthSubs].map(
+      s=>s.toLowerCase()+'@depth20@100ms'
+    );
+
+    for(let i=0;i<params.length;i+=100){
+      ws.send(JSON.stringify({
+        method:'SUBSCRIBE',
+        params:params.slice(i,i+100),
+        id:i+1
+      }));
+      await sleep(120);
+    }
+  };
+
+  ws.onmessage=e=>{
+    let msg;
+    try{msg=JSON.parse(e.data)}catch{return}
+
+    if(!msg||!msg.stream||!msg.data)return;
+
+    const at=msg.stream.indexOf('@');
+    if(at<=0)return;
+
+    const symbol=msg.stream.slice(0,at).toUpperCase();
+    depthSnapshot(symbol,msg.data);
+  };
+
+  ws.onclose=()=>{
+    if(G.depthSubs.size){
+      setTimeout(startDepth,1800);
+    }
+  };
+
+  ws.onerror=()=>{};
+}
+
+function ensureDepthExact(symbol){
+  if(!G.depth.has(symbol)){
+    G.depth.set(symbol,{samples:[],lastSampleAt:0,latest:null});
+  }
+
+  if(!G.depthSubs.has(symbol)){
+    G.depthSubs.add(symbol);
+
+    if(G.depthWs&&G.depthWs.readyState===WebSocket.OPEN){
+      G.depthWs.send(JSON.stringify({
+        method:'SUBSCRIBE',
+        params:[symbol.toLowerCase()+'@depth20@100ms'],
+        id:Date.now()%1000000000
+      }));
+    }
+  }
+}
+
+function bookMetrics(entry){
+  const st=G.depth.get(entry.symbol);
+  if(!st||!st.latest){
+    return{
+      ready:false,
+      bidAdv:NaN,
+      imbalance:NaN,
+      bidDelta:NaN,
+      imbalanceDelta:NaN,
+      pass:false
+    };
+  }
+
+  const after=st.samples.filter(x=>x.t>=entry.addedAt);
+  const latest=st.latest;
+
+  if(after.length<6){
+    return{
+      ready:false,
+      bidAdv:latest.bidAdv,
+      imbalance:latest.imbalance,
+      bidDelta:NaN,
+      imbalanceDelta:NaN,
+      pass:false
+    };
+  }
+
+  const six=after.slice(-6);
+  const prev=six.slice(0,3);
+  const cur=six.slice(3,6);
+
+  const prevBid=avg(prev,'bidAdv');
+  const curBid=avg(cur,'bidAdv');
+  const prevImb=avg(prev,'imbalance');
+  const curImb=avg(cur,'imbalance');
+
+  const bidDelta=curBid-prevBid;
+  const imbalanceDelta=curImb-prevImb;
+
+  const pass=
+    curBid>0 &&
+    curImb>0 &&
+    bidDelta>=CFG.bidAdvMinIncrease &&
+    imbalanceDelta>=CFG.imbalanceMinIncrease;
+
+  return{
+    ready:true,
+    bidAdv:latest.bidAdv,
+    imbalance:latest.imbalance,
+    avgBid:curBid,
+    avgImbalance:curImb,
+    bidDelta,
+    imbalanceDelta,
+    pass
+  };
+}
+
+
+/* ---------------- Record clearing ---------------- */
+
+function symbolStillTracked(symbol){
+  for(const e of G.entries.values()){
+    if(e.symbol===symbol)return true;
+  }
+  return false;
+}
+
+function unsubscribeIfUnused(symbol){
+  if(symbolStillTracked(symbol))return;
+
+  if(G.depthSubs.has(symbol)){
+    G.depthSubs.delete(symbol);
+    if(G.depthWs&&G.depthWs.readyState===WebSocket.OPEN){
+      G.depthWs.send(JSON.stringify({
+        method:'UNSUBSCRIBE',
+        params:[symbol.toLowerCase()+'@depth20@100ms'],
+        id:Date.now()%1000000000
+      }));
+    }
+    G.depth.delete(symbol);
+  }
+
+  if(G.tickerSubs.has(symbol)){
+    G.tickerSubs.delete(symbol);
+    if(G.tickerWs&&G.tickerWs.readyState===WebSocket.OPEN){
+      G.tickerWs.send(JSON.stringify({
+        method:'UNSUBSCRIBE',
+        params:[symbol.toLowerCase()+'@ticker'],
+        id:(Date.now()+1)%1000000000
+      }));
+    }
+    G.ticker24h.delete(symbol);
+  }
+
+  if(G.execSubs.has(symbol))releaseExecutedSymbol(symbol);
+}
+
+function clearWorkerRecords(w){
+  const symbolsToCheck=new Set();
+
+  for(const [key,e] of [...G.entries.entries()]){
+    if(e.workerId!==w.id)continue;
+    symbolsToCheck.add(e.symbol);
+    G.entries.delete(key);
+    G.promoted.delete(key);
+    G.final.delete(key);
+    G.nominationWatch.delete(key);
+    G.followUp.delete(key);
+    G.followDismissed.delete(key);
+  }
+
+  for(const symbol of symbolsToCheck){
+    unsubscribeIfUnused(symbol);
+  }
+
+  log(`W${w.id} RECORDS CLEARED — auto state unchanged`);
+  renderAll();
+  persistStateNow();
+}
+
+function clearAllRecords(){
+  resetExecutedRuntime();
+  // Reset all signal/alert history. Telegram credentials remain untouched.
+  for(const f of G.followUp.values()){
+    f.lastStatus=null;
+    f.entryAlertSent=false;
+    f.stopLossAlerted=false;
+  }
+
+  G.entries.clear();
+  G.promoted.clear();
+  G.final.clear();
+  G.nominationWatch.clear();
+  G.followUp.clear();
+  G.followDismissed.clear();
+
+  if(G.depthWs&&G.depthWs.readyState===WebSocket.OPEN&&G.depthSubs.size){
+    G.depthWs.send(JSON.stringify({
+      method:'UNSUBSCRIBE',
+      params:[...G.depthSubs].map(s=>s.toLowerCase()+'@depth20@100ms'),
+      id:Date.now()%1000000000
+    }));
+  }
+
+  if(G.tickerWs&&G.tickerWs.readyState===WebSocket.OPEN&&G.tickerSubs.size){
+    G.tickerWs.send(JSON.stringify({
+      method:'UNSUBSCRIBE',
+      params:[...G.tickerSubs].map(s=>s.toLowerCase()+'@ticker'),
+      id:(Date.now()+1)%1000000000
+    }));
+  }
+
+  if(G.execWs&&G.execWs.readyState===WebSocket.OPEN&&G.execSubs.size){
+    G.execWs.send(JSON.stringify({
+      method:'UNSUBSCRIBE',
+      params:[...G.execSubs].map(s=>s.toLowerCase()+'@aggTrade'),
+      id:(Date.now()+2)%1000000000
+    }));
+  }
+
+  G.depth.clear();
+  G.depthSubs.clear();
+  G.ticker24h.clear();
+  G.tickerSubs.clear();
+  G.execFlow.clear();
+  G.execSubs.clear();
+
+  log('ALL RECORDS CLEARED — workers and auto scanning unchanged');
+  renderAll();
+  persistStateNow();
+}
+
+
+/* ---------------- Entries ---------------- */
+
+function entryKey(symbol,tf){
+  return symbol+'|'+tf;
+}
+
+function addCoin(w,c,scanTf){
+  const tf=scanTf||w.tf;
+  const key=entryKey(c.symbol,tf);
+  let entry=G.entries.get(key);
+
+  if(entry&&Number(entry.lastBreak)===Number(c.barTime)){
+    // Same signal, not a new breakout: retain sums, stages and Telegram flags.
+    ensureExecutedEntry(entry);
+    return;
+  }
+
+  if(!entry){
+    entry={
+      key,
+      symbol:c.symbol,
+      tf,
+      workerId:w.id,
+      firstBreak:c.barTime,
+      lastBreak:c.barTime,
+      breakoutClose:c.close,
+      stopLoss:c.stopLoss,
+      addedAt:now(),
+      promotedAt:null,
+      promotion:null
+    };
+    G.entries.set(key,entry);
+    ensureDepthExact(c.symbol);   // kept untouched for later use
+    ensureTicker24h(c.symbol);
+    ensureExecutedEntry(entry);
+
+    log(`W${w.id} ${tf} ADD ${c.symbol} -> CUMULATIVE EXECUTION WATCH`);
+  }else{
+    // Keep the historical row, but restart the order-book comparison
+    // from the newest confirmed breakout on the same symbol/timeframe.
+    entry.lastBreak=c.barTime;
+    entry.breakoutClose=c.close;
+    entry.stopLoss=c.stopLoss;
+    entry.addedAt=now();
+    entry.promotedAt=null;
+    entry.promotion=null;
+    entry.volume24hBaseline=NaN;
+    entry.volume24hBaselineAt=null;
+    entry.finalAt=null;
+    entry.finalReason=null;
+    entry.finalIncrease=null;
+    G.followDismissed.delete(key);
+    G.promoted.delete(key);
+    G.final.delete(key);
+    G.nominationWatch.delete(key);
+
+    // A genuinely different breakout keeps the original per-signal reset behavior.
+    ensureExecutedEntry(entry);
+
+    log(`W${w.id} ${tf} REBREAK ${c.symbol} -> NEW EXECUTION PERIOD`);
+
+  }
+
+  renderAll();
+}
+
+function maybePromoteExecutedEntry(entry){
+  if(G.entries.get(entry.key)!==entry||G.promoted.has(entry.key))return;
+  const m=executionMetrics(entry);
+  if(!m.pass)return;
+
+  entry.promotedAt=now();
+  entry.promotion={source:'EXECUTED_CUMULATIVE_BUY_GT_SELL_V1',
+    buy:m.buy,sell:m.sell,buySell:m.buySell,imbalance:m.imbalance,
+    net:m.net,from:m.from,lastId:m.lastId,lastTime:m.lastTime};
+
+  const v24=current24hVolume(entry.symbol);
+  entry.volume24hBaseline=Number.isFinite(v24)?v24:NaN;
+  entry.volume24hBaselineAt=Number.isFinite(v24)?now():null;
+  G.promoted.set(entry.key,entry);
+  log(`PROMOTE ${entry.symbol} ${entry.tf} BUY_GT_SELL Buy=${fmtUSDT(m.buy)} Sell=${fmtUSDT(m.sell)}`);
+  schedulePersistentSave();
+}
+function maybePromote(){
+  for(const entry of G.entries.values())maybePromoteExecutedEntry(entry);
+}
+
+function tiltText(m){
+  if(!Number.isFinite(m.bidAdv)||!Number.isFinite(m.imbalance))return 'تجميع الدفتر…';
+  if(m.imbalance>=8)return 'ميل شراء واضح';
+  if(m.imbalance>0)return 'يميل للمشترين';
+  if(m.imbalance<=-8)return 'ميل بيع واضح';
+  return 'يميل للبائعين';
+}
+
+function renderAll(){
+  maybePromote();
+  maybePromoteFinal();
+
+  const stage1=[...G.entries.values()].map(e=>{
+    const m=bookMetrics(e);
+    return{e,m};
+  }).sort((a,b)=>{
+    const av=Number.isFinite(a.m.imbalance)?a.m.imbalance:-999;
+    const bv=Number.isFinite(b.m.imbalance)?b.m.imbalance:-999;
+    return bv-av;
+  });
+
+  $('stage1Body').innerHTML=stage1.map(({e,m})=>`
+    <tr>
+      <td class="symbol">${e.symbol}</td>
+      <td class="tf">${e.tf}</td>
+      <td class="num ${Number.isFinite(m.bidAdv)&&m.bidAdv>0?'good':Number.isFinite(m.bidAdv)?'bad':''}">${pct(m.bidAdv)}</td>
+      <td class="num ${Number.isFinite(m.imbalance)&&m.imbalance>0?'good':Number.isFinite(m.imbalance)?'bad':''}">${pct(m.imbalance)}</td>
+      <td>${tiltText(m)}</td>
+    </tr>
+  `).join('');
+
+  const stage2=[...G.promoted.values()].map(e=>{
+    const m=executionMetrics(e);
+    return{e,m};
+  }).sort((a,b)=>(b.e.promotedAt||0)-(a.e.promotedAt||0));
+
+  $('stage2Body').innerHTML=stage2.map(({e,m})=>`
+    <tr>
+      <td class="symbol">${e.symbol}</td>
+      <td class="tf">${e.tf}</td>
+      <td class="num">${fmtExecUSDT(m.buy)}</td>
+      <td class="num">${fmtExecUSDT(m.sell)}</td>
+      <td class="num ${m.buy>m.sell?'good':m.sell>m.buy?'bad':'warn'}">${fmtBuySell(m.buySell)}</td>
+      <td class="num ${m.imbalance>0?'good':m.imbalance<0?'bad':'warn'}">${pct(m.imbalance)}</td>
+      <td class="num ${m.net>0?'good':m.net<0?'bad':'warn'}">${fmtExecUSDT(m.net)}</td>
+      <td class="${m.ready?'good':'warn'}">${executedDataLabel(m)}</td>
+    </tr>
+  `).join('');
+
+  const stage3=[...G.final.values()].map(e=>{
+    const cur=current24hVolume(e.symbol);
+    const base=e.volume24hBaseline;
+    const increase=(Number.isFinite(cur)&&Number.isFinite(base))?cur-base:NaN;
+    return{e,cur,base,increase};
+  }).sort((a,b)=>(b.e.finalAt||0)-(a.e.finalAt||0));
+
+  $('stage3Body').innerHTML=stage3.map(({e,cur,base,increase})=>`
+    <tr>
+      <td class="symbol">${e.symbol}</td>
+      <td class="tf">${e.tf}</td>
+      <td class="num">${fmtUSDT(cur)} USDT</td>
+      <td class="num">${fmtUSDT(base)} USDT</td>
+      <td class="num ${Number.isFinite(increase)&&increase>=0?'good':'bad'}">${fmtUSDT(increase)} USDT</td>
+      <td>${e.finalReason||'—'}</td>
+    </tr>
+  `).join('');
+
+  // Stage 4: intensive monitoring.
+  // Rules:
+  // - Every stage-3 entry is eligible to enter watch when growth is positive.
+  // - Keep it under watch while growth > 0.
+  // - Mark as NOMINATED only when growth >= +0.1%.
+  // - Remove from stage 4 only when growth <= 0.
+  for(const row of stage3){
+    const growth=growthPct(row.cur,row.base);
+    const key=row.e.key;
+
+    if(Number.isFinite(growth)&&growth>0){
+      if(!G.nominationWatch.has(key)){
+        G.nominationWatch.set(key,{
+          key,
+          enteredAt:now()
+        });
+        log(`WATCH4 ${row.e.symbol} ${row.e.tf} growth=${growth.toFixed(4)}%`);
+      }
+    }else if(Number.isFinite(growth)&&growth<=0){
+      // Preserve restored rows while live 24h data is still loading (growth=NaN).
+      // Existing business rule remains unchanged once a real finite value arrives.
+      if(G.nominationWatch.has(key)){
+        G.nominationWatch.delete(key);
+        log(`WATCH4 REMOVE ${row.e.symbol} ${row.e.tf} growth=${growth.toFixed(4)}%`);
+      }
+    }
+  }
+
+  // Remove orphaned watches if their stage-3 record was cleared.
+  for(const key of [...G.nominationWatch.keys()]){
+    if(!G.final.has(key))G.nominationWatch.delete(key);
+  }
+
+  const nominations=[...G.nominationWatch.keys()].map(key=>{
+    const e=G.final.get(key);
+    const cur=current24hVolume(e.symbol);
+    const base=e.volume24hBaseline;
+    const increase=(Number.isFinite(cur)&&Number.isFinite(base))?cur-base:NaN;
+    const growth=growthPct(cur,base);
+    const nominated=Number.isFinite(growth)&&growth>=CFG.nominationGrowthPct;
+    return{e,cur,base,increase,growth,nominated};
+  }).filter(x=>Number.isFinite(x.growth)&&x.growth>0)
+    .sort((a,b)=>{
+      // Nominated rows first, then highest growth.
+      if(a.nominated!==b.nominated)return a.nominated?-1:1;
+      if(b.growth!==a.growth)return b.growth-a.growth;
+      return (Number.isFinite(b.cur)?b.cur:0)-(Number.isFinite(a.cur)?a.cur:0);
+    });
+
+  // Any +0.1% nomination enters stage 5 permanently until manual deletion.
+  for(const x of nominations){
+    if(x.nominated)ensureFollowUp(x);
+  }
+
+  $('nominationBody').innerHTML=nominations.map((x,i)=>`
+    <tr>
+      <td class="rank">${i+1}</td>
+      <td class="symbol ${x.nominated?'warn':''}">${x.e.symbol}</td>
+      <td class="tf">${x.e.tf}</td>
+      <td class="num">${fmtUSDT(x.cur)} USDT</td>
+      <td class="num good">${fmtUSDT(x.increase)} USDT</td>
+      <td class="num good">${pct(x.growth)}</td>
+      <td class="${x.nominated?'good':'warn'}">${x.nominated?'مرشح':'مراقبة مكثفة'}</td>
+    </tr>
+  `).join('');
+
+  const followRows=[...G.followUp.values()].map(f=>{
+    const e=G.final.get(f.key)||G.entries.get(f.key);
+    const curP=currentPrice(f.symbol);
+
+    if(Number.isFinite(curP)){
+      if(!Number.isFinite(f.highPrice)||curP>f.highPrice)f.highPrice=curP;
+    }
+
+    const high=f.highPrice;
+    const entry=f.entryPrice;
+    const maxGain=(Number.isFinite(high)&&Number.isFinite(entry)&&entry>0)?(high/entry-1)*100:NaN;
+    const drawdown=(Number.isFinite(curP)&&Number.isFinite(high)&&high>0)?(curP/high-1)*100:NaN;
+
+    const base=e&&Number.isFinite(e.volume24hBaseline)?e.volume24hBaseline:NaN;
+    const curV=current24hVolume(f.symbol);
+    const growth=growthPct(curV,base);
+
+    const bm=e?bookMetrics(e):{bidAdv:NaN,imbalance:NaN};
+
+    const row={
+      f,e,currentPrice:curP,highPrice:high,maxGain,drawdown,growth,
+      stopLoss:f.stopLoss,
+      bidAdv:bm.bidAdv,imbalance:bm.imbalance
+    };
+    row.status=followStatus(row);
+    return row;
+  });
+
+  sortFollowRows(followRows);
+
+  $('followBody').innerHTML=followRows.map(row=>{
+    const st=row.status;
+    const cls=st==='مستمر'?'good':st==='يضعف'?'warn':'bad';
+
+    // Telegram: notify only when state moves FROM مستمر to anything else.
+    if(row.f.lastStatus==='مستمر' && st!=='مستمر' && st!=='تجميع البيانات'){
+      sendTelegram(telegramStatusMessage(row.f,row.f.lastStatus,st,row.currentPrice));
+    }
+    row.f.lastStatus=st;
+
+    // Telegram: stop-loss alert once.
+    if(
+      !row.f.stopLossAlerted &&
+      Number.isFinite(row.stopLoss) &&
+      Number.isFinite(row.currentPrice) &&
+      row.currentPrice<=row.stopLoss
+    ){
+      row.f.stopLossAlerted=true;
+      sendTelegram(telegramStopMessage(row.f,row.currentPrice));
+    }
+
+    return`
+      <tr>
+        <td class="symbol">${row.f.symbol}</td>
+        <td class="tf">${row.f.tf}</td>
+        <td class="num">${fmtPrice(row.f.entryPrice)}</td>
+        <td class="num ${Number.isFinite(row.currentPrice)&&Number.isFinite(row.stopLoss)&&row.currentPrice<=row.stopLoss?'bad':''}">${fmtPrice(row.f.stopLoss)}</td>
+        <td class="num">${fmtPrice(row.currentPrice)}</td>
+        <td class="num">${fmtPrice(row.highPrice)}</td>
+        <td class="num ${Number.isFinite(row.maxGain)&&row.maxGain>=0?'good':'bad'}">${pct(row.maxGain)}</td>
+        <td class="num ${Number.isFinite(row.drawdown)&&row.drawdown<0?'bad':'good'}">${pct(row.drawdown)}</td>
+        <td class="num ${Number.isFinite(row.growth)&&row.growth>=0?'good':'bad'}">${pct(row.growth)}</td>
+        <td class="num ${Number.isFinite(row.bidAdv)&&row.bidAdv>=0?'good':'bad'}">${pct(row.bidAdv)}</td>
+        <td class="num ${Number.isFinite(row.imbalance)&&row.imbalance>=0?'good':'bad'}">${pct(row.imbalance)}</td>
+        <td class="${cls}">${st}</td>
+        <td><button class="miniBtn" data-follow-delete="${row.f.key}">حذف</button></td>
+      </tr>
+    `;
+  }).join('');
+
+  for(const btn of document.querySelectorAll('[data-follow-delete]')){
+    btn.onclick=()=>deleteFollowUp(btn.getAttribute('data-follow-delete'));
+  }
+
+  $('followEmpty').style.display=followRows.length?'none':'block';
+  $('followCount').textContent=followRows.length;
+  $('followBadge').textContent=followRows.length;
+
+  $('stage1Empty').style.display=stage1.length?'none':'block';
+  $('stage2Empty').style.display=stage2.length?'none':'block';
+  $('stage3Empty').style.display=stage3.length?'none':'block';
+  $('nominationEmpty').style.display=nominations.length?'none':'block';
+
+  $('watchCount').textContent=G.entries.size;
+  $('promotedCount').textContent=G.promoted.size;
+  $('finalCount').textContent=G.final.size;
+  const nominatedCount=nominations.filter(x=>x.nominated).length;
+  $('nominationCount').textContent=nominatedCount;
+  $('stage1Badge').textContent=G.entries.size;
+  $('stage2Badge').textContent=G.promoted.size;
+  $('stage3Badge').textContent=G.final.size;
+  $('nominationBadge').textContent=`${nominatedCount} مرشح / ${nominations.length} مراقبة`;
+
+  for(const w of G.workers){
+    const found=[...G.entries.values()].filter(e=>e.workerId===w.id).length;
+    const prom=[...G.promoted.values()].filter(e=>e.workerId===w.id).length;
+    $(`w${w.id}found`).textContent=found;
+    $(`w${w.id}prom`).textContent=prom;
+  }
+
+  // Persist table membership and stage-5 tracking changes.
+  schedulePersistentSave();
+}
+
+/* ---------------- Binance candle clock ---------------- */
+
+function bucket(tf,t=now()){
+  const x=TF[tf],off=x.offset||0;
+  return Math.floor((t-off)/x.ms)*x.ms+off;
+}
+function nextOpen(tf,t=now()){
+  return bucket(tf,t)+TF[tf].ms;
+}
+function updateClock(w){
+  w.tf=$(`w${w.id}tf`).value;
+  const target=w.nextBoundary||nextOpen(w.tf);
+  $(`w${w.id}cd`).textContent=w.running?cd(target-now()):'AUTO OFF';
+}
+function clearWorkerTimer(w){
+  if(w.timer){
+    clearTimeout(w.timer);
+    w.timer=null;
+  }
+  w.nextBoundary=null;
+}
+function scheduleNext(w){
+  clearWorkerTimer(w);
+  if(!w.running)return;
+
+  // Take the timeframe directly from THIS worker's selector.
+  const selectedTf=String($(`w${w.id}tf`).value);
+  if(!TF[selectedTf]){
+    log(`W${w.id} invalid selected timeframe: ${selectedTf}`);
+    return;
+  }
+
+  w.tf=selectedTf;
+  $(`w${w.id}activeTf`).textContent=selectedTf;
+
+  const boundary=nextOpen(selectedTf,now());
+  w.nextBoundary=boundary;
+  updateClock(w);
+
+  const delay=Math.max(0,boundary-now());
+  w.timer=setTimeout(()=>{
+    w.timer=null;
+    w.nextBoundary=null;
+    if(!w.running)return;
+
+    // Freeze the timeframe that this timer was created for.
+    const tfAtBoundary=selectedTf;
+    const targetOpen=boundary-TF[tfAtBoundary].ms;
+
+    // Immediately schedule the following Binance candle.
+    scheduleNext(w);
+
+    if(w.scanning){
+      w.pendingTargets.push({tf:tfAtBoundary,targetOpen});
+      if(w.pendingTargets.length>3)w.pendingTargets.shift();
+      log(`W${w.id} ${tfAtBoundary} queued ${new Date(targetOpen).toISOString()}`);
+    }else{
+      scanWorker(w,false,targetOpen,tfAtBoundary);
+    }
+  },delay);
+}
+
+/* ---------------- Scans ---------------- */
+
+async function scanWorker(w,manual=false,targetOpenOverride=null,tfOverride=null){
+  if(w.scanning){
+    if(targetOpenOverride!=null){
+      w.pendingTargets.push({
+        tf:tfOverride||$(`w${w.id}tf`).value,
+        targetOpen:targetOpenOverride
+      });
+    }
+    return;
+  }
+
+  if(!G.symbols.length){
+    log('Market list not ready');
+    return;
+  }
+
+  const token=++w.abort;
+
+  // IMPORTANT: lock this scan to the worker's SELECTED timeframe at scan start.
+  // It never falls back to a fixed/default timeframe during this scan.
+  const tf=String(tfOverride||$(`w${w.id}tf`).value);
+  if(!TF[tf]){
+    log(`W${w.id} invalid timeframe: ${tf}`);
+    return;
+  }
+
+  w.tf=$(`w${w.id}tf`).value;
+  w.scanning=true;
+  $(`w${w.id}activeTf`).textContent=tf;
+
+  const targetOpen=targetOpenOverride!=null
+    ?targetOpenOverride
+    :bucket(tf,now())-TF[tf].ms;
+
+  $(`w${w.id}s`).textContent=manual?'فحص يدوي':'فحص تلقائي';
+  $(`w${w.id}p`).style.width='0%';
+
+  log(
+    `W${w.id} SCAN LOCKED_TF=${tf} SELECTED=${$(`w${w.id}tf`).value} `+
+    `${manual?'MANUAL':'BINANCE_OPEN'} target=${new Date(targetOpen).toISOString()}`
+  );
+
+  let done=0;
+
+  await pool(
+    G.symbols,
+    CFG.scanConcurrency,
+    async symbol=>{
+      try{
+        const b=await bars(symbol,tf);
+        for(const c of breaks(symbol,b,targetOpen)){
+          // Record the exact locked timeframe for THIS worker scan.
+          addCoin(w,c,tf);
+        }
+      }catch(e){}
+      finally{
+        done++;
+        $(`w${w.id}p`).style.width=((done/G.symbols.length)*100).toFixed(1)+'%';
+      }
+    },
+    ()=>token===w.abort
+  );
+
+  if(token===w.abort){
+    w.scanning=false;
+    $(`w${w.id}s`).textContent=w.running?'AUTO ON — ينتظر Binance':'AUTO OFF';
+    log(`W${w.id} SCAN DONE ${tf}`);
+
+    if(w.running&&w.pendingTargets.length){
+      const next=w.pendingTargets.shift();
+      setTimeout(()=>scanWorker(w,false,next.targetOpen,next.tf),0);
+    }
+  }
+}
+
+async function startWorker(w){
+  w.tf=String($(`w${w.id}tf`).value);
+  $(`w${w.id}activeTf`).textContent=w.tf;
+  w.running=true;
+  w.pendingTargets=[];
+  await syncTime();
+  scheduleNext(w);
+  $(`w${w.id}s`).textContent='AUTO ON — ينتظر Binance';
+  updateClock(w);
+  log(`W${w.id} AUTO ON ${w.tf}`);
+}
+
+function stopWorker(w){
+  // Only stop FUTURE automatic scans.
+  // Do not remove entries and do not stop order-book monitoring.
+  w.running=false;
+  w.pendingTargets=[];
+  clearWorkerTimer(w);
+  $(`w${w.id}s`).textContent=w.scanning?'يفحص الآن — AUTO OFF':'AUTO OFF';
+  updateClock(w);
+  log(`W${w.id} AUTO OFF ${w.tf} — order-book watches kept`);
+}
+
+
+function showPage(name){
+  const work=name==='work';
+  const details=name==='details';
+  const settings=name==='settings';
+
+  $('workPage').classList.toggle('active',work);
+  $('detailsPage').classList.toggle('active',details);
+  $('settingsPage').classList.toggle('active',settings);
+
+  $('workTab').classList.toggle('active',work);
+  $('detailsTab').classList.toggle('active',details);
+  $('settingsTab').classList.toggle('active',settings);
+}
+
+/* ---------------- Init ---------------- */
+
+async function init(){
+  buildWorkers();
+  loadTelegramSettings();
+
+  // Restore all table records before reconnecting market streams.
+  restorePersistentState();
+  initFollowSorting();
+
+  await syncTime();
+
+  const info=await api('/api/v3/exchangeInfo');
+  G.symbols=(info.symbols||[])
+    .filter(s=>s.status==='TRADING'&&s.quoteAsset==='USDT'&&s.isSpotTradingAllowed!==false)
+    .map(s=>s.symbol)
+    .sort();
+
+  $('pairs').textContent=G.symbols.length;
+
+  startDepth();       // unchanged; retained for later use
+  startTicker24h();
+  startExecutedFlow();
+
+  // Show restored rows immediately; live values will refill as streams arrive.
+  renderAll();
+
+  G.renderTimer=setInterval(renderAll,1000);
+  G.clockTimer=setInterval(()=>G.workers.forEach(updateClock),250);
+
+  G.timeSyncTimer=setInterval(async()=>{
+    await syncTime();
+    for(const w of G.workers){
+      if(w.running)scheduleNext(w);
+    }
+  },60000);
+
+  log(`Ready. ${G.symbols.length} USDT spot pairs. Binance clock synchronized.`);
+}
+
+$('startAll').onclick=async()=>{
+  for(const w of G.workers)await startWorker(w);
+  $('startAll').disabled=true;
+  $('stopAll').disabled=false;
+};
+$('stopAll').onclick=()=>{
+  for(const w of G.workers)stopWorker(w);
+  $('startAll').disabled=false;
+  $('stopAll').disabled=true;
+};
+
+$('clearAllRecords').onclick=()=>clearAllRecords();
+$('clearFollowTable').onclick=()=>clearFollowTable();
+$('workTab').onclick=()=>showPage('work');
+$('detailsTab').onclick=()=>showPage('details');
+$('settingsTab').onclick=()=>showPage('settings');
+
+$('saveTelegram').onclick=()=>saveTelegramSettings();
+$('testTelegram').onclick=async()=>{
+  saveTelegramSettings();
+  if(!telegramConfigured())return;
+  setTelegramStatus('جارٍ إرسال رسالة الاختبار…');
+  await sendTelegram('✅ اختبار تنبيهات ماسح Binance\nتم الاتصال بنجاح.');
+};
+
+showPage('work');
+
+window.addEventListener('pagehide',()=>persistStateNow());
+window.addEventListener('beforeunload',()=>persistStateNow());
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden')persistStateNow();
+});
+
+init().catch(e=>log('INIT ERROR '+e.message));
+</script>
+</body>
+</html>
